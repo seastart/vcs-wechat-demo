@@ -1,0 +1,200 @@
+/* pages/sdk.wxss */
+/*网格*/
+.members-ctn {
+    display: flex;
+    flex-direction: row;
+    height: 100vh;
+}
+
+.left-big-member {
+    flex-grow: 3;
+    height: 100%;
+    background: #2d3134;
+    position: relative;
+}
+
+.right-ctn {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+/*如果只有2人，等分*/
+.right-eq {
+    flex-grow: 3;
+}
+
+.right-sm-member {
+    flex-grow: 1;
+    background: #2d3134;
+    border-left: 1px solid #444;
+    position: relative;
+}
+
+.right-sm-member+.right-sm-member {
+    border-top: 1px solid #444;
+}
+
+/* 重连提示 */
+.reconnect-tip {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    text-align: center;
+    color: #fff;
+    font-size: 10px;
+    padding: 2px;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+/* 底部工具栏 */
+.tools-bar {
+    position: fixed;
+    height: 36px;
+    width: 100vw;
+    bottom: 0;
+    background: #212526;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}
+
+.tools-btn {
+    flex-grow: 1;
+    color: #a2a3a5;
+    font-size: 12px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 单个网格内容，推拉流 */
+.pusher,
+.player {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.mic-pusher {
+    width: 0;
+    height: 0;
+}
+
+.amix-player {
+    width: 0;
+    height: 0;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+/*单个网格，用户没有视频时默认的背景*/
+.account-bg {
+    width: 60px;
+    height: 60px;
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    margin: auto;
+    overflow: hidden;
+}
+
+.default-avatar,
+.avatar {
+    width: 100%;
+    height: 100%;
+    line-height: 60px;
+    border-radius: 30px;
+    background: #4169E1;
+    color: #ffffff;
+    font-size: 25px;
+    text-align: center;
+}
+
+/*单个网格，用户信息栏*/
+.account-info-bar {
+    width: 100%;
+    height: 18px;
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    color: #fff;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+}
+
+.account-info-bar image {
+    width: 15px;
+    height: 15px;
+    margin: 0 3px;
+}
+
+/*成员列表*/
+#member_list {
+    width: 50vw;
+    display: flex;
+}
+
+.member-list-head {
+    text-align: center;
+}
+
+.mrow {
+    width: 100%;
+}
+
+.mitem {
+    display: flex;
+    width: 100%;
+    height: 50px;
+    line-height: 50px;
+    flex-direction: row;
+    align-items: center;
+    font-size: 15px;
+}
+
+.mitem:hover {
+    background-color: #eee;
+}
+
+.mavatar-ctn {
+    width: 40px;
+    height: 40px;
+    flex-grow: 0;
+    margin: 0 10px;
+    overflow: hidden;
+}
+
+.mavatar,
+.default-mavatar {
+    width: 100%;
+    height: 100%;
+    display: block;
+    border-radius: 20px;
+    line-height: 40px;
+    text-align: center;
+    color: #fff;
+    background: #4169E1;
+}
+
+.mnick {
+    flex-grow: 1;
+}
+
+.micon {
+    width: 25px;
+    height: 25px;
+    flex-grow: 0;
+    margin: 0 5px;
+}

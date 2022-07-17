@@ -1,0 +1,17 @@
+node_modules
+miniprogram_npm
+miniprogram/pages/test
+miniprogram/sdk
+miniprogram/**/*.js
+.cache
+.parcel-cache
+.yarn
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+.history
+package-lock.json
+yarn.lock

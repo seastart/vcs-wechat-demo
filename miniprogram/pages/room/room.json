@@ -1,0 +1,10 @@
+{
+    "usingComponents": {
+        "recycle-view": "miniprogram-recycle-view/recycle-view",
+        "recycle-item": "miniprogram-recycle-view/recycle-item"
+    },
+    "pageOrientation": "landscape",
+    "navigationBarTextStyle": "white",
+    "navigationBarBackgroundColor": "#212526",
+    "backgroundColor": "#2d3134"
+  }

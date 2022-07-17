@@ -1,0 +1,96 @@
+<!-- 一大三小，左边一大，右边三小分栏 -->
+<view class="members-ctn">
+    <view class="left-big-member" data-id="leftBig" bind:tap="onTapMemberGrid">
+        <template is="account-template" data="{{account: renderAccounts.leftBig, grid: 'leftBig', meID: meID, enableCamera: enableCamera, enableMic: enableMic, enableBeauty: enableBeauty, repush: repush, replay: replay}}"/>
+    </view>
+    <view class="right-ctn {{!renderAccounts.right2 ? 'right-eq' : ''}}" wx:if="{{renderAccounts.right1}}">
+        <view class="right-sm-member" wx:if="{{renderAccounts.right1}}" data-id="right1" bind:tap="onTapMemberGrid">
+            <template is="account-template" data="{{account: renderAccounts.right1, grid: 'right1', meID: meID, enableCamera: enableCamera, enableMic: enableMic, enableBeauty: enableBeauty, repush: repush, replay: replay}}"/>
+        </view>
+        <view class="right-sm-member" wx:if="{{renderAccounts.right2}}" data-id="right2" bind:tap="onTapMemberGrid">
+            <template is="account-template" data="{{account: renderAccounts.right2, grid: 'right2', meID: meID, enableCamera: enableCamera, enableMic: enableMic, enableBeauty: enableBeauty, repush: repush, replay: replay}}"/>
+        </view>
+        <view class="right-sm-member" wx:if="{{renderAccounts.right3}}" data-id="right3" bind:tap="onTapMemberGrid">
+            <template is="account-template" data="{{account: renderAccounts.right3, grid: 'right3', meID: meID, enableCamera: enableCamera, enableMic: enableMic, enableBeauty: enableBeauty, repush: repush, replay: replay}}"/>
+        </view>
+    </view>
+</view>
+
+<!-- 混音流播放器 -->
+<live-player class="amix-player" data-id="amixer" src="{{(replay['amixer'] || replay['all']) ? '' : amixer}}" mode="RTC" autoplay="{{true}}" 
+    min-cache="0.2" max-cache="0.8" object-fit="contain"
+    bindstatechange="onPlayStateChange" bindnetstatus="onPlayNetStatus"
+></live-player>
+
+<!-- 底部操作工具栏 -->
+<view class="tools-bar" wx:if="{{showToolbar}}">
+    <view class="tools-btn" bind:tap="onTapCameraBtn">
+        <text>摄像头 {{enableCamera ? '开':'关'}}</text>
+    </view>
+    <view class="tools-btn" bind:tap="onTapMicBtn">
+        <text>麦克风 {{enableMic ? '开':'关'}}</text>
+    </view>
+    <view class="tools-btn" bind:tap="onTapBeautyBtn">
+        <text>美颜 {{enableBeauty ? '开':'关'}}</text>
+    </view>
+    <view class="tools-btn" bind:tap="onTapMembersBtn">
+        <text>成员 {{memberNum}}</text>
+    </view>
+</view>
+
+<!-- 成员列表 -->
+<page-container show="{{showMemberList}}" bind:beforeenter="onShowMemberList" bind:afterleave="onHideMemberList" round="{{true}}" position="right" overlay="{{true}}" custom-style="margin-left: 50vw; width:50vw; border-radius: 15px 0px 0px 15px;" overlay-style="background-color: rgba(0, 0, 0, 0.7)">
+    <recycle-view batch="{{batchSetRecycleData}}" id="member_list">
+        <view class="member-list-head" slot="before">成员列表({{memberNum}})</view>
+        <recycle-item class="mrow" wx:for="{{members}}" wx:key="id">
+            <view class="mitem">
+                <view class="mavatar-ctn">
+                    <image class="mavatar" src="{{item.portrait}}" wx:if="{{item.portrait}}"/>
+                    <view class="default-mavatar" wx:if="{{!item.portrait}}">
+                        <text>{{item.nickname}}</text>
+                    </view>
+                </view>
+                <text class="mnick">{{item.nickname}}{{item.id == meID ? '(我)' : ''}}</text>
+                <image class="micon" src="../../images/host.png" wx:if="{{item.role == 2}}" />
+                <image class="micon" src="{{ (item.id == meID ? enableMic : item.astate == 0) ? '../../images/mmicro.png' : '../../images/mmicro-mute.png'}}" />
+                <image class="micon" src="{{ (item.id == meID ? enableCamera : item.vstate == 0) ? '../../images/mcamera.png' : '../../images/mcamera-mute.png'}}" />
+            </view>
+        </recycle-item>
+    </recycle-view>
+</page-container>
+
+
+<!-- 网络重连提示 -->
+<view class="reconnect-tip" wx:if="{{reconnecting}}">
+    <text>网络重连中...</text>
+</view>
+
+<!-- 渲染某用户template -->
+<template name="account-template">
+    <view class="account-bg">
+        <image class="avatar" src="{{account.portrait}}" wx:if="{{account.portrait}}"/>
+        <view class="default-avatar" wx:if="{{!account.portrait}}">
+            <text>{{account.nickname}}</text>
+        </view>
+    </view>
+    <!-- 自己推流 -->
+    <!-- 参考 https://developers.weixin.qq.com/miniprogram/dev/component/live-pusher.html -->
+    <live-pusher class="pusher {{enableCamera ? '':'mic-pusher'}}" wx:if="{{account.id == meID}}" data-grid="{{grid}}" url="{{repush ? '' : account.rtmp}}" mode="RTC" autopush="{{true}}"
+        enable-camera="{{enableCamera}}" enable-mic="{{enableMic}}" beauty="{{enableBeauty ? 5 : 0}}"
+        min-bitrate="50" max-bitrate="500" audio-quality="high"
+        bindstatechange="onPushStateChange" bindnetstatus="onPushNetStatus"
+        binderror="onPushError" bindaudiovolumenotify="onPushVolumeNotify"
+    ></live-pusher>
+    <!-- 收某用户视频流，可能有多个player -->
+    <!-- 参考 https://developers.weixin.qq.com/miniprogram/dev/component/live-player.html -->
+    <live-player class="player" wx:if="{{account.rtmp && account.id != meID}}" id="player-{{account.id}}" data-id="{{account.id}}" data-grid="{{grid}}" src="{{(replay[account.id] || replay['all']) ? '' : account.rtmp}}" mode="RTC" autoplay="{{true}}" 
+        min-cache="0.2" max-cache="0.8" object-fit="contain"
+        bindstatechange="onPlayStateChange" bindnetstatus="onPlayNetStatus"
+    ></live-player>
+
+    <view class="account-info-bar">
+        <image src="../../images/host.png" wx:if="{{account.role == 2}}" />
+        <image src="{{ (account.id == meID ? enableMic : account.astate == 0) ? '../../images/micro.png' : '../../images/micro-mute.png'}}" />
+        <text>{{account.nickname}}</text>
+    </view>
+</template>

@@ -1,0 +1,15 @@
+<!--index.wxml-->
+<form class="login-form" wx:if="{{!logined}}" bindsubmit="onLogin">
+  <input value="{{dft.username}}" type="text" name="username" placeholder="用户名" />
+  <input value="{{dft.password}}" type="password" name="password" placeholder="密码"/>
+  <button type="primary" form-type="submit">登录</button>
+</form>
+
+<form class="enter-form" wx:if="{{logined}}" bindsubmit="onEnterRoom">
+    <input value="{{dft.roomNo}}" type="text" name="room_no" placeholder="会议号"/>
+    <input type="text" name="nickname" value="{{nickname}}" placeholder="入会昵称"/>
+    <input type="text" name="password" placeholder="入会密码"/>
+    <switch name="enable_camera">开启摄像头</switch>
+    <switch name="enable_mic">开启麦克风</switch>
+    <button type="primary" form-type="submit">入会</button>
+</form>

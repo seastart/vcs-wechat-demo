@@ -1,0 +1,13 @@
+/**index.wxss**/
+.login-form, .enter-form {
+    display: flex;
+    flex-direction: column;
+    align-items:center;
+    margin-top:50px;
+}
+
+input, switch {
+    display: block;
+    margin: 20px 0;
+    border-bottom: 1px solid #eee;
+}
