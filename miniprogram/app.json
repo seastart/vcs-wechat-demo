@@ -1,8 +1,7 @@
 {
     "pages": [
         "pages/index/index",
-        "pages/room/room",
-        "pages/test/test"
+        "pages/room/room"
     ],
     "window": {
         "backgroundTextStyle": "light",

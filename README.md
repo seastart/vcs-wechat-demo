@@ -15,6 +15,8 @@ module.exports = {
     dftRoomNo: "方便测试的默认房间号，不填则每次都要手动输入"
 };
 ```
+* 根目录下运行`npm install`，小程序开发者工具`工具-构建npm`
+* ☕️
 
 ## typescript工程无法识别sdk的d.ts声明
 ts如果不能正确识别sdk的.d.ts定义的变量类型，请在tsconfig.json中配置  
