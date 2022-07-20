@@ -213,16 +213,15 @@ Page({
                     } else if (renderAccounts.right3 && renderAccounts.right3.id != this.data.meID) {
                         grid = 'right3';
                     }
+                }
+                vcsIns.pullPeerStream(account.id, TrackDesc.SHARE).catch((err) => {
+                    console.error('自动尝试取流失败', err);
+                }).finally(() => {
                     this.tryRender(account, grid);
-                }
-                // 切到左侧大格子，自动拉流并渲染
-                if (grid !== 'leftBig') {
-                    this.toggleLeftBig(grid);
-                }
-                vcsIns.switchShareStream(account.id).then(() => {
-                    this.tryUpdateRender(account);
-                }).catch((err) => {
-                    console.log('拉共享流失败', err);
+                    // 切到左侧大格子
+                    if (grid !== 'leftBig') {
+                        this.toggleLeftBig(grid);
+                    }
                 });
                 break;
             }
@@ -231,12 +230,16 @@ Page({
                 let grid = this.getRenderingGrid(account);
                 // 尝试切到摄像头
                 if (grid !== '') {
-                    vcsIns.pullPeerStream(account.id, grid == 'leftBig' ? TrackDesc.CAMERAL_BIG : TrackDesc.CAMERAL_SMALL).catch((err) => {
-                        vcsIns.stopPullPeerStream(account.id);
-                        console.log('尝试从共享切回视频流失败', err);
-                    }).finally(() => {
+                    // 如果当前在拉此共享流，sdk内部会自动取消拉流，这里只用刷新渲染
+                    if(account.vstate === DeviceState.DS_Active) {
+                        vcsIns.pullPeerStream(account.id, grid == 'leftBig' ? TrackDesc.CAMERAL_BIG : TrackDesc.CAMERAL_SMALL).catch((err) => {
+                            console.log('尝试从共享切回视频流失败', err);
+                        }).finally(() => {
+                            this.tryUpdateRender(account);
+                        });
+                    } else {
                         this.tryUpdateRender(account);
-                    });
+                    }
                 }
                 break;
             }
@@ -436,6 +439,7 @@ Page({
      * @param info 
      */
     refreshRender(info: RoomInfo) {
+        console.log('refresh with room info', info);
         wx.setNavigationBarTitle({
             title: info.no,
         });
@@ -450,7 +454,11 @@ Page({
             amixer: info.amixer,
         });
         // 渲染网格数据
-        // 自己在默认大格子
+        // 如果在共享，优先渲染共享
+        if(info.share) {
+            this.tryRender(info.share.person);
+        }
+        // 再渲染自己
         this.tryRender(info.me);
         for (let i = 0; i < info.persons.length && i < 3; i++) {
             this.tryRender(info.persons[i]);
@@ -463,6 +471,10 @@ Page({
      * @returns 
      */
     tryRender(account: AccountInfo, grid: string = '') {
+        if(grid == '') {
+            // 是不是已经在渲染
+            grid = this.getRenderingGrid(account);
+        }
         // 检查可用格子
         let renderAccounts = this.data.renderAccounts;
         if (grid == '') {
@@ -486,8 +498,9 @@ Page({
             [`renderAccounts.${grid}`]: account,
         });
         // 尝试自动拉流
-        if (account.rtmp == '' && account.vstate === DeviceState.DS_Active) {
-            vcsIns.pullPeerStream(account.id, grid == 'leftBig' ? TrackDesc.CAMERAL_BIG : TrackDesc.CAMERAL_SMALL).then((rtmp) => {
+        let isSharing = (this.roomInfo.share && this.roomInfo.share.person.id == account.id);
+        if (account.rtmp == '' && ( isSharing || account.vstate === DeviceState.DS_Active)) {
+            vcsIns.pullPeerStream(account.id, isSharing ? TrackDesc.SHARE : (grid == 'leftBig' ? TrackDesc.CAMERAL_BIG : TrackDesc.CAMERAL_SMALL)).then((rtmp) => {
                 this.tryUpdateRender(account);
             }).catch((err) => {
                 console.error('自动尝试取流失败', err);
@@ -518,14 +531,14 @@ Page({
             [`renderAccounts.${grid}`]: laccount,
         });
         // 再自动切大小流
-        if (raccount.id != this.data.meID && vcsIns.getPullingTrackDesc(raccount.id) === 'small') {
+        if (raccount.id != this.data.meID && vcsIns.getPullingTrackDesc(raccount.id) === TrackDesc.CAMERAL_SMALL) {
             vcsIns.switchBigStream(raccount.id).then(() => {
                 this.tryUpdateRender(raccount);
             }).catch((err) => {
                 console.error('自动尝试切大流失败', err);
             });
         }
-        if (laccount && laccount.id != this.data.meID && vcsIns.getPullingTrackDesc(laccount!.id) === 'big') {
+        if (laccount && laccount.id != this.data.meID && vcsIns.getPullingTrackDesc(laccount!.id) === TrackDesc.CAMERAL_BIG) {
             vcsIns.switchSmallStream(laccount!.id).then(() => {
                 this.tryUpdateRender(laccount!);
             }).catch((err) => {

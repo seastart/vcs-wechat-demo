@@ -13,3 +13,5 @@
     <switch name="enable_mic">开启麦克风</switch>
     <button type="primary" form-type="submit">入会</button>
 </form>
+
+<button wx:if="{{logined}}" bindtap="onLogout">退出登录</button>

@@ -70,7 +70,7 @@ Page({
             });
             return;
         }
-        wx.showLoading({title:'入会中'});
+        wx.showLoading({mask:true, title:'入会中'});
         vcsIns.enterRoom({
             roomNo: room_no,
             nickname: nickname,
@@ -92,18 +92,24 @@ Page({
             });
             // token失效，退出
             if (err.code == 401) {
-                vcsIns.logout().catch((err: SdkError) => {
-                    console.log('sdk退出报错', err);
-                }).finally(() => {
-                    getApp<IAppOption>().globalData.loginRsp = null;
-                    this.setData({
-                        logined: false,
-                        nickname: '',
-                    });
-                });
+                this.onLogout();
             }
         }).finally(() => {
             wx.hideLoading();
+        });
+    },
+    /** 退出 */
+    onLogout() {
+        vcsIns.logout().then(() => {
+            console.log('退出成功');
+        }).catch((err:SdkError) => {
+            console.log('sdk退出报错', err.msg);
+        }).finally(() => {
+            getApp<IAppOption>().globalData.loginRsp = null;
+            this.setData({
+                logined: false,
+                nickname: '',
+            });
         });
     }
 })
