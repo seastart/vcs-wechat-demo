@@ -4,17 +4,7 @@ import { IAppOption } from "../../../typings/index";
 import { AccountInfo, DeviceState, RoomEvent, RoomEventType, RoomInfo, TrackDesc, WeChat_VCSIns } from "../../sdk/index";
 
 let vcsIns: WeChat_VCSIns = (getApp() as IAppOption).vcsIns!;
-/** 当前渲染的account信息 */
-interface RenderAccounts {
-    /** 左大格 */
-    leftBig?: AccountInfo | null,
-    /** 右上 */
-    right1?: AccountInfo | null,
-    /** 右中 */
-    right2?: AccountInfo | null,
-    /** 右下 */
-    right3?: AccountInfo | null,
-}
+const MAX_GRIDS = 4;
 // pages/sdk.ts
 Page({
 
@@ -22,6 +12,8 @@ Page({
      * 页面的初始数据
      */
     data: {
+        /**标题 */
+        title: '',
         /**我自己的id */
         meID: '',
         /**是否开启麦克风 */
@@ -41,7 +33,7 @@ Page({
         /**是否断线重连中 */
         reconnecting: false,
         /**当前显示的成员信息 */
-        renderAccounts: {} as RenderAccounts,
+        renderAccounts: [] as AccountInfo[],
         /**房间成员数 */
         memberNum: 1,
         /**混音流播放地址 */
@@ -93,7 +85,7 @@ Page({
             page: this,
             itemSize: {
                 width: 100,
-                height: 50,
+                height: 30,
             },
         });
     },
@@ -108,9 +100,11 @@ Page({
             keepScreenOn: false
         });
     },
-
+    onTapBack() {
+        wx.navigateBack();
+    },
     /**
-     * 回到上一页
+     * 延迟回到上一页并且不弹框提醒
      * 如果是从分享的连接打开，没有页面栈，回到首页
      */
     navigateBack: function (delay: number = 0) {
@@ -184,8 +178,8 @@ Page({
                 // 如果正在渲染且没有拉视频流，自动拉流
                 let account: AccountInfo = evt.data.person;
                 let grid = this.getRenderingGrid(account);
-                if (grid != '' && account.rtmp == '') {
-                    vcsIns.pullPeerStream(evt.data.id, grid == 'leftBig' ? TrackDesc.CAMERAL_BIG : TrackDesc.CAMERAL_SMALL).then((rtmp) => {
+                if (grid != -1 && account.rtmp == '') {
+                    vcsIns.pullPeerStream(evt.data.id, grid == 0 ? TrackDesc.CAMERAL_BIG : TrackDesc.CAMERAL_SMALL).then((rtmp) => {
                         this.tryUpdateRender(account);
                     }).catch((err) => {
                         console.error('自动尝试取流失败', err);
@@ -201,17 +195,13 @@ Page({
                 // 共享开始
                 let account: AccountInfo = evt.data.person;
                 let grid = this.getRenderingGrid(account);
-                if (grid == '') {
+                if (grid == -1) {
                     // 当前没在显示，需要挤掉一个当前渲染的用户
-                    let renderAccounts = this.data.renderAccounts;
-                    if (renderAccounts.leftBig && renderAccounts.leftBig.id != this.data.meID) {
-                        grid = 'leftBig';
-                    } else if (renderAccounts.right1 && renderAccounts.right1.id != this.data.meID) {
-                        grid = 'right1';
-                    } else if (renderAccounts.right2 && renderAccounts.right2.id != this.data.meID) {
-                        grid = 'right2';
-                    } else if (renderAccounts.right3 && renderAccounts.right3.id != this.data.meID) {
-                        grid = 'right3';
+                    for (let i = 0; i < MAX_GRIDS; i++) {
+                        if (!this.data.renderAccounts[i] || this.data.renderAccounts[i].id != this.data.meID) {
+                            grid = i;
+                            break;
+                        }
                     }
                 }
                 vcsIns.pullPeerStream(account.id, TrackDesc.SHARE).catch((err) => {
@@ -219,7 +209,7 @@ Page({
                 }).finally(() => {
                     this.tryRender(account, grid);
                     // 切到左侧大格子
-                    if (grid !== 'leftBig') {
+                    if (grid !== -1 && this.data.memberNum > 2) {
                         this.toggleLeftBig(grid);
                     }
                 });
@@ -229,10 +219,10 @@ Page({
                 let account: AccountInfo = evt.data.person;
                 let grid = this.getRenderingGrid(account);
                 // 尝试切到摄像头
-                if (grid !== '') {
+                if (grid !== -1) {
                     // 如果当前在拉此共享流，sdk内部会自动取消拉流，这里只用刷新渲染
-                    if(account.vstate === DeviceState.DS_Active) {
-                        vcsIns.pullPeerStream(account.id, grid == 'leftBig' ? TrackDesc.CAMERAL_BIG : TrackDesc.CAMERAL_SMALL).catch((err) => {
+                    if (account.vstate === DeviceState.DS_Active) {
+                        vcsIns.pullPeerStream(account.id, grid == 0 ? TrackDesc.CAMERAL_BIG : TrackDesc.CAMERAL_SMALL).catch((err) => {
                             console.log('尝试从共享切回视频流失败', err);
                         }).finally(() => {
                             this.tryUpdateRender(account);
@@ -400,6 +390,139 @@ Page({
         });
     },
     /**
+     * 上下翻页
+    */
+    onPageDown() {
+        // 当前除自己外少于3人，无需翻页
+        if (this.data.memberNum <= MAX_GRIDS) {
+            return;
+        }
+        // 翻页只翻右侧格子
+        // 如果右侧有自己，自己固定在右1，确保pusher存在
+        // 往下翻页，从最下面的格子往上顶起
+        let renderAccounts = this.data.renderAccounts;
+        let newItems = this.scrollByDirection(renderAccounts, MAX_GRIDS-1, false);
+        // 已经是最后一页了
+        if (newItems.length == 0) {
+            return;
+        }
+        this.setData({
+            renderAccounts: renderAccounts,
+        });
+    },
+    onPageUp() {
+        if (this.data.memberNum <= MAX_GRIDS) {
+            return;
+        }
+        // 翻页只翻右侧格子
+        // 如果右侧有自己，自己固定在右1，确保pusher存在
+        // 往上翻页，从最上面的格子往下顶起
+        let renderAccounts = this.data.renderAccounts;
+        let newItems = this.scrollByDirection(renderAccounts, MAX_GRIDS-1, true);
+        // 已经是第一页了
+        if (newItems.length == 0) {
+            return;
+        }
+        this.setData({
+            renderAccounts: renderAccounts,
+        });
+    },
+    /**
+     * 右侧小格子往上或往下滚动num个成员
+     * @param renderAccounts 当前的渲染成员
+     * @param num 数量
+     * @param up 向上找还是向下找
+     * @param replace 滚动时是否替换原有成员，如果外部已经做了renderAccount的删除处理，则无需替换
+     */
+     scrollByDirection(renderAccounts:AccountInfo[], num: number, up: boolean, replace:boolean=true): AccountInfo[] {
+        // 最多滚动一页
+        num = Math.min(num, MAX_GRIDS-1);
+        if(num < 0) {
+            return [];
+        }
+        let hasme = false;
+        // 如果自己在右侧，将自己固定在右1，确保livepusher存在
+        for (let i = 1; i < MAX_GRIDS; i++) {
+            if (renderAccounts[i] && renderAccounts[i].id === this.data.meID) {
+                let me = renderAccounts[i];
+                for (let j = i; j > 1; j--) {
+                    renderAccounts[j] = renderAccounts[j - 1];
+                }
+                renderAccounts[1] = me;
+                hasme = true;
+                break;
+            }
+        }
+        if(hasme && num == (MAX_GRIDS-1)) {
+            num--;
+        }
+        // 找出当前右侧第一个和最后一个
+        let account = null, firstAccount = null, lastAccount = null;
+        for (let i = 1; i < MAX_GRIDS; i++) {
+            if (renderAccounts[i] && renderAccounts[i].id !== this.data.meID) {
+                if (!firstAccount) {
+                    firstAccount = renderAccounts[i];
+                }
+                lastAccount = renderAccounts[i];
+            }
+        }
+        if(up) {
+            account = firstAccount;
+        } else {
+            account = lastAccount;
+        }
+        let index = -1;
+        if (!account) {
+            index = 0;
+        } else {
+            for (let i = 0; i < this.roomInfo.persons.length; i++) {
+                if (this.roomInfo.persons[i].id == account.id) {
+                    index = i;
+                    break;
+                }
+            }
+            if (index == -1) {
+                console.error(`取可用成员列表时，起始成员${account.id} ${account.nickname}不在列表中`);
+                return [];
+            }
+        }
+        
+        let newItems = [];
+        if (up) {
+            for (let i = index - 1; i >= 0; i--) {
+                let person = this.roomInfo.persons[i];
+                if (this.getRenderingGrid(person) == -1) {
+                    newItems.unshift(person);
+                    if (newItems.length == num) {
+                        break;
+                    }
+                }
+            }
+            // 插入到队首，并删除尾部
+            if(newItems.length > 0){
+                renderAccounts.splice(hasme ? 2:1, 0, ...newItems);
+                replace && renderAccounts.splice(renderAccounts.length-newItems.length, newItems.length);
+            }
+        } else {
+            for (let i = index + 1; i < this.roomInfo.persons.length; i++) {
+                let person = this.roomInfo.persons[i];
+                if (this.getRenderingGrid(person) == -1) {
+                    newItems.push(person);
+                    if (newItems.length == num) {
+                        break;
+                    }
+                }
+            }
+            // 插入到队尾，并删除头部
+            if(newItems.length > 0){
+                renderAccounts.push(...newItems);
+                replace && renderAccounts.splice(hasme ? 2: 1, newItems.length);
+            }
+        }
+        
+        return newItems;
+    },
+    /**
      * 显示成员列表
      */
     onTapMembersBtn(evt: any) {
@@ -420,7 +543,7 @@ Page({
      * @param evt 
      */
     onTapMemberGrid(evt: any) {
-        let grid: string = evt.currentTarget.dataset.id;
+        let grid: number = evt.currentTarget.dataset.id.replace('grid', '');
         // 先显示工具栏
         clearInterval(this.hideToolbarIntervalId);
         this.setData({
@@ -430,7 +553,7 @@ Page({
             showToolbar: false,
         }), 5000);
         // 开始切换大小格子
-        if (grid !== 'leftBig' && this.data.memberNum > 2) {
+        if (grid !== 0 && this.data.memberNum > 2) {
             this.toggleLeftBig(grid);
         }
     },
@@ -440,22 +563,20 @@ Page({
      */
     refreshRender(info: RoomInfo) {
         console.log('refresh with room info', info);
-        wx.setNavigationBarTitle({
-            title: info.no,
-        });
         this.roomInfo = info;
         this.setData({
+            title: info.no,
             meID: info.me.id,
             // 根据入会后服务端校验返回后的音视频状态来设置初始摄像头、麦克风状态
             enableCamera: info.me.vstate == DeviceState.DS_Active,
             enableMic: info.me.astate == DeviceState.DS_Active,
-            renderAccounts: {},
+            renderAccounts: [],
             memberNum: info.persons.length + 1,
             amixer: info.amixer,
         });
         // 渲染网格数据
         // 如果在共享，优先渲染共享
-        if(info.share) {
+        if (info.share) {
             this.tryRender(info.share.person);
         }
         // 再渲染自己
@@ -467,40 +588,37 @@ Page({
     /**
      * 尝试渲染某成员到某格子
      * @param account 成员信息
-     * @param grid 格子，传空则自动寻找空余格子（没有则不显示），否则会强制渲染到对应格子
+     * @param grid 格子，传-1则自动寻找空余格子（没有则不显示），否则会强制渲染到对应格子
      * @returns 
      */
-    tryRender(account: AccountInfo, grid: string = '') {
-        if(grid == '') {
+    tryRender(account: AccountInfo, grid: number = -1) {
+        if (grid == -1) {
             // 是不是已经在渲染
             grid = this.getRenderingGrid(account);
         }
         // 检查可用格子
         let renderAccounts = this.data.renderAccounts;
-        if (grid == '') {
-            if (!renderAccounts.leftBig) {
-                grid = 'leftBig';
-            } else if (!renderAccounts.right1) {
-                grid = 'right1';
-            } else if (!renderAccounts.right2) {
-                grid = 'right2';
-            } else if (!renderAccounts.right3) {
-                grid = 'right3';
+        if (grid == -1) {
+            for (let i = 0; i < MAX_GRIDS; i++) {
+                if (!renderAccounts[i]) {
+                    grid = i;
+                    break;
+                }
             }
         }
-        if (grid == '') {
+        if (grid == -1) {
             console.log('暂时没有可用的格子来渲染', account);
             return;
         }
         // 先占据格子
         console.log('render', grid, account);
         this.setData({
-            [`renderAccounts.${grid}`]: account,
+            [`renderAccounts[${grid}]`]: account,
         });
         // 尝试自动拉流
         let isSharing = (this.roomInfo.share && this.roomInfo.share.person.id == account.id);
-        if (account.rtmp == '' && ( isSharing || account.vstate === DeviceState.DS_Active)) {
-            vcsIns.pullPeerStream(account.id, isSharing ? TrackDesc.SHARE : (grid == 'leftBig' ? TrackDesc.CAMERAL_BIG : TrackDesc.CAMERAL_SMALL)).then((rtmp) => {
+        if (account.rtmp == '' && (isSharing || account.vstate === DeviceState.DS_Active)) {
+            vcsIns.pullPeerStream(account.id, isSharing ? TrackDesc.SHARE : (grid == 0 ? TrackDesc.CAMERAL_BIG : TrackDesc.CAMERAL_SMALL)).then((rtmp) => {
                 this.tryUpdateRender(account);
             }).catch((err) => {
                 console.error('自动尝试取流失败', err);
@@ -511,24 +629,26 @@ Page({
      * 将右侧某视图切换到左侧大图
      * @param grid 右侧格子
      */
-    toggleLeftBig(grid: string) {
-        if (grid == 'leftBig') {
+    toggleLeftBig(grid: number) {
+        if (grid == 0) {
             return;
         }
+        let renderAccounts = this.data.renderAccounts;
         // 格子没在渲染，直接返回
-        let raccount: AccountInfo = (this.data.renderAccounts as any)[grid];
+        let raccount: AccountInfo = renderAccounts[grid];
         if (!raccount) {
             return;
         }
-        let laccount = this.data.renderAccounts.leftBig;
+        let laccount = renderAccounts[0];
         // 先左右交换，占据格子
         console.log('render toggle left', grid, raccount, laccount);
         // stop media
         this.stopMedia(raccount);
         laccount && this.stopMedia(laccount);
+        // 交换值
         this.setData({
-            [`renderAccounts.leftBig`]: raccount,
-            [`renderAccounts.${grid}`]: laccount,
+            [`renderAccounts[0]`]: raccount,
+            [`renderAccounts[${grid}]`]: laccount,
         });
         // 再自动切大小流
         if (raccount.id != this.data.meID && vcsIns.getPullingTrackDesc(raccount.id) === TrackDesc.CAMERAL_SMALL) {
@@ -551,18 +671,13 @@ Page({
      * @param account 成员信息
      * @returns 
      */
-    getRenderingGrid(account: AccountInfo): string {
-        let renderAccounts = this.data.renderAccounts;
-        if (renderAccounts.leftBig && renderAccounts.leftBig.id == account.id) {
-            return 'leftBig';
-        } else if (renderAccounts.right1 && renderAccounts.right1.id == account.id) {
-            return 'right1';
-        } else if (renderAccounts.right2 && renderAccounts.right2.id == account.id) {
-            return 'right2';
-        } else if (renderAccounts.right3 && renderAccounts.right3.id == account.id) {
-            return 'right3';
+    getRenderingGrid(account: AccountInfo): number {
+        for (let i = 0; i < MAX_GRIDS; i++) {
+            if (this.data.renderAccounts[i] && this.data.renderAccounts[i].id == account.id) {
+                return i;
+            }
         }
-        return '';
+        return -1;
     },
     /**
      * 尝试更新渲染某成员，如果成员没有在渲染则不做任何事情
@@ -572,12 +687,12 @@ Page({
     tryUpdateRender(account: AccountInfo) {
         // 如果不是在render直接返回
         let grid = this.getRenderingGrid(account);
-        if (grid == '') {
+        if (grid == -1) {
             return;
         }
         console.log('render update', grid, account);
         this.setData({
-            [`renderAccounts.${grid}`]: account,
+            [`renderAccounts[${grid}]`]: account,
         });
     },
     /**
@@ -585,28 +700,28 @@ Page({
      * @param account 成员信息
      * @returns 
      */
-    tryRemoveRender(account: AccountInfo) {
+     tryRemoveRender(account: AccountInfo) {
         let grid = this.getRenderingGrid(account);
-        if (grid == '') {
+        if (grid == -1) {
             return;
         }
+        let renderAccounts = this.data.renderAccounts;
         console.log('render remove', grid, account);
         this.stopMedia(account);
+        // 如果移除的是大网格，将自己切过去
+        if (grid == 0) {
+            grid = this.getRenderingGrid(this.roomInfo.me);
+            renderAccounts[0] = this.roomInfo.me;
+        }
+        renderAccounts.splice(grid, 1);
+        // 尝试向下或向上自动补位
+        let newItems = this.scrollByDirection(renderAccounts, 1, false, false);
+        if (newItems.length == 0) {
+            newItems = this.scrollByDirection(renderAccounts, 1, true, false);
+        }
         this.setData({
-            [`renderAccounts.${grid}`]: null,
+            renderAccounts: renderAccounts,
         });
-        // 尝试自动补位
-        for (let tmpAccount of this.roomInfo.persons) {
-            // 当前没在渲染
-            if (account.id != tmpAccount.id && this.getRenderingGrid(tmpAccount) == '') {
-                this.tryRender(tmpAccount, grid);
-                break;
-            }
-        }
-        // 如果移除的是大网格，并且只剩1人，将自己切过去
-        if (grid == 'leftBig' && this.roomInfo.persons.length == 0) {
-            this.toggleLeftBig(this.getRenderingGrid(this.roomInfo.me));
-        }
     },
     /**
      * 停止微信的媒体播放

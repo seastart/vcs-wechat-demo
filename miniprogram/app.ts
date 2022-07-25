@@ -1,5 +1,5 @@
 import { IAppOption } from "../typings";
-import { WeChat_VCSIns } from "./sdk/index";
+import { LogLevel, WeChat_VCSIns } from "./sdk/index";
 let SDK_CONFIG = require("./sdk_config");
 
 // app.ts
@@ -13,6 +13,7 @@ App<IAppOption>({
             appID: SDK_CONFIG.appID,
             appKey: SDK_CONFIG.appKey,
             serverPrefix: SDK_CONFIG.serverPrefix || "https://vcs.anyconf.cn:9001/vcs",
+            logLevel: LogLevel.DEBUG,
         });
         // 可以监听会议外消息
     },

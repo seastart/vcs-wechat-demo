@@ -4,7 +4,6 @@
         "recycle-item": "miniprogram-recycle-view/recycle-item"
     },
     "pageOrientation": "landscape",
-    "navigationBarTextStyle": "white",
-    "navigationBarBackgroundColor": "#212526",
+    "navigationStyle": "custom",
     "backgroundColor": "#2d3134"
   }
