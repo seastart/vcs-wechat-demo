@@ -656,12 +656,6 @@ Page({
         // stop media
         this.stopMedia(raccount);
         laccount && this.stopMedia(laccount);
-        this.setData({
-            enableCamera: false,
-        });
-        setTimeout(() => {
-            
-        
         // 交换值
         this.setData({
             [`renderAccounts[0]`]: raccount,
@@ -682,7 +676,6 @@ Page({
                 console.error('自动尝试切小流失败', err);
             });
         }
-    }, 1000);
     },
     /**
      * 获取某成员正在渲染的格子
