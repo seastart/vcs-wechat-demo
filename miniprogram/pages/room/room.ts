@@ -519,6 +519,17 @@ Page({
                 replace && renderAccounts.splice(hasme ? 2: 1, newItems.length);
             }
         }
+        // 尝试自动拉流
+        newItems.forEach(account => {
+            let isSharing = (this.roomInfo.share && this.roomInfo.share.person.id == account.id);
+            if (account.rtmp == '' && (isSharing || account.vstate === DeviceState.DS_Active)) {
+                vcsIns.pullPeerStream(account.id, isSharing ? TrackDesc.SHARE : TrackDesc.CAMERAL_SMALL).then((rtmp) => {
+                    this.tryUpdateRender(account);
+                }).catch((err) => {
+                    console.error('翻页自动尝试取流失败', err);
+                });
+            }
+        });
         
         return newItems;
     },
@@ -645,10 +656,16 @@ Page({
         // stop media
         this.stopMedia(raccount);
         laccount && this.stopMedia(laccount);
+        this.setData({
+            enableCamera: false,
+        });
+        setTimeout(() => {
+            
+        
         // 交换值
         this.setData({
             [`renderAccounts[0]`]: raccount,
-            [`renderAccounts[${grid}]`]: laccount,
+            [`renderAccounts[${grid}]`]: laccount
         });
         // 再自动切大小流
         if (raccount.id != this.data.meID && vcsIns.getPullingTrackDesc(raccount.id) === TrackDesc.CAMERAL_SMALL) {
@@ -665,6 +682,7 @@ Page({
                 console.error('自动尝试切小流失败', err);
             });
         }
+    }, 1000);
     },
     /**
      * 获取某成员正在渲染的格子
