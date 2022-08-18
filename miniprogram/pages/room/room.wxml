@@ -88,7 +88,7 @@
     <!-- 参考 https://developers.weixin.qq.com/miniprogram/dev/component/live-pusher.html -->
     <live-pusher class="pusher {{enableCamera ? '':'mic-pusher'}}" wx:if="{{account.id == meID}}" data-grid="{{grid}}" url="{{repush ? '' : account.rtmp}}" mode="RTC" autopush="{{true}}"
         enable-camera="{{enableCamera}}" enable-mic="{{enableMic}}" beauty="{{enableBeauty ? 5 : 0}}"
-        min-bitrate="50" max-bitrate="500" audio-quality="high"
+        min-bitrate="50" max-bitrate="500" audio-quality="high" enable-agc="{{true}}" enable-ans="{{true}}"
         bindstatechange="onPushStateChange" bindnetstatus="onPushNetStatus"
         binderror="onPushError" bindaudiovolumenotify="onPushVolumeNotify"
     ></live-pusher>

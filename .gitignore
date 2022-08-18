@@ -15,3 +15,4 @@ miniprogram/**/*.js
 .history
 package-lock.json
 yarn.lock
+.cloudbase
