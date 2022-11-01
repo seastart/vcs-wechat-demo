@@ -9,7 +9,7 @@
     display: flex;
     align-items: center;
 }
-.nav-bar .nav-back-btn {
+.nav-bar .nav-back-btn, .nav-bar .speaker-btn, .nav-bar .switch-camera-btn{
     width: 44px;
     height: 44px;
 }

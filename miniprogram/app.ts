@@ -16,5 +16,11 @@ App<IAppOption>({
             logLevel: LogLevel.DEBUG,
         });
         // 可以监听会议外消息
+        // 设备信息
+        // wx.getSystemInfo().then((info) => {
+        //     console.log(info);
+        // });
+        // console.log(wx.getDeviceInfo());
+        // console.log(wx.getAppBaseInfo());
     },
 })

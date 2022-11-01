@@ -1,28 +1,30 @@
 <!-- 自定义顶栏-->
 <view class="nav-bar">
     <image class="nav-back-btn" src="../../images/back.png" bind:tap="onTapBack"/>
+    <image class="speaker-btn" src="{{enableSpeaker ? '../../images/speaker.png' : '../../images/speaker-mute.png'}}" bind:tap="onTapSpeakerBtn"/>
+    <image class="switch-camera-btn" src="../../images/switch-camera.png" bind:tap="onTapSwitchCameraBtn"/>
     <text class="nav-title">{{title}}</text>
 </view>
 <!-- 一大三小，左边一大，右边三小分栏 -->
 <view class="members-ctn">
-    <view class="left-big-member" data-id="grid0" bind:tap="onTapMemberGrid">
-        <template is="account-template" data="{{account: renderAccounts[0], grid: 0, meID: meID, enableCamera: enableCamera, enableMic: enableMic, enableBeauty: enableBeauty, repush: repush, replay: replay}}"/>
+    <view class="left-big-member" data-id="grid0" bind:tap="onTapMemberGrid" bind:longpress="onLpMemberGrid">
+        <template is="account-template" data="{{account: renderAccounts[0], grid: 0, meID: meID, cameraPosition: cameraPosition, enableCamera: enableCamera, enableMic: enableMic, enableBeauty: enableBeauty, repush: repush, replay: replay}}"/>
     </view>
     <view class="right-ctn {{!renderAccounts[2] ? 'right-eq' : ''}}" wx:if="{{renderAccounts[1]}}">
-        <view class="right-sm-member" wx:if="{{renderAccounts[1]}}" data-id="grid1" bind:tap="onTapMemberGrid">
-            <template is="account-template" data="{{account: renderAccounts[1], grid: 1, meID: meID, enableCamera: enableCamera, enableMic: enableMic, enableBeauty: enableBeauty, repush: repush, replay: replay}}"/>
+        <view class="right-sm-member" wx:if="{{renderAccounts[1]}}" data-id="grid1" bind:tap="onTapMemberGrid" bind:longpress="onLpMemberGrid">
+            <template is="account-template" data="{{account: renderAccounts[1], grid: 1, meID: meID, cameraPosition: cameraPosition, enableCamera: enableCamera, enableMic: enableMic, enableBeauty: enableBeauty, repush: repush, replay: replay}}"/>
         </view>
-        <view class="right-sm-member" wx:if="{{renderAccounts[2]}}" data-id="grid2" bind:tap="onTapMemberGrid">
-            <template is="account-template" data="{{account: renderAccounts[2], grid: 2, meID: meID, enableCamera: enableCamera, enableMic: enableMic, enableBeauty: enableBeauty, repush: repush, replay: replay}}"/>
+        <view class="right-sm-member" wx:if="{{renderAccounts[2]}}" data-id="grid2" bind:tap="onTapMemberGrid" bind:longpress="onLpMemberGrid">
+            <template is="account-template" data="{{account: renderAccounts[2], grid: 2, meID: meID, cameraPosition: cameraPosition, enableCamera: enableCamera, enableMic: enableMic, enableBeauty: enableBeauty, repush: repush, replay: replay}}"/>
         </view>
-        <view class="right-sm-member" wx:if="{{renderAccounts[3]}}" data-id="grid3" bind:tap="onTapMemberGrid">
-            <template is="account-template" data="{{account: renderAccounts[3], grid: 3, meID: meID, enableCamera: enableCamera, enableMic: enableMic, enableBeauty: enableBeauty, repush: repush, replay: replay}}"/>
+        <view class="right-sm-member" wx:if="{{renderAccounts[3]}}" data-id="grid3" bind:tap="onTapMemberGrid" bind:longpress="onLpMemberGrid">
+            <template is="account-template" data="{{account: renderAccounts[3], grid: 3, meID: meID, cameraPosition: cameraPosition, enableCamera: enableCamera, enableMic: enableMic, enableBeauty: enableBeauty, repush: repush, replay: replay}}"/>
         </view>
     </view>
 </view>
 
-<!-- 混音流播放器 -->
-<live-player class="amix-player" data-id="amixer" src="{{(replay['amixer'] || replay['all']) ? '' : amixer}}" mode="RTC" autoplay="{{true}}" 
+<!-- 音频混音流播放器 -->
+<live-player class="amix-player" data-id="amixer" src="{{(replay['amixer'] || replay['all']) ? '' : amixer}}" mode="RTC" autoplay="{{true}}" muted="{{!enableSpeaker}}"
     min-cache="0.2" max-cache="0.8" object-fit="contain"
     bindstatechange="onPlayStateChange" bindnetstatus="onPlayNetStatus"
 ></live-player>
@@ -87,7 +89,7 @@
     <!-- 自己推流 -->
     <!-- 参考 https://developers.weixin.qq.com/miniprogram/dev/component/live-pusher.html -->
     <live-pusher class="pusher {{enableCamera ? '':'mic-pusher'}}" wx:if="{{account.id == meID}}" data-grid="{{grid}}" url="{{repush ? '' : account.rtmp}}" mode="RTC" autopush="{{true}}"
-        enable-camera="{{enableCamera}}" enable-mic="{{enableMic}}" beauty="{{enableBeauty ? 5 : 0}}"
+        enable-camera="{{enableCamera}}" enable-mic="{{enableMic}}" beauty="{{enableBeauty ? 5 : 0}}" device-position="{{cameraPosition}}"
         min-bitrate="50" max-bitrate="500" audio-quality="high" enable-agc="{{true}}" enable-ans="{{true}}"
         bindstatechange="onPushStateChange" bindnetstatus="onPushNetStatus"
         binderror="onPushError" bindaudiovolumenotify="onPushVolumeNotify"

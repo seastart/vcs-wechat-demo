@@ -1,7 +1,7 @@
 //  let {WeChat_VCSIns} = require("../../sdk/index.js")
 import createRecycleContext from 'miniprogram-recycle-view';
 import { IAppOption } from "../../../typings/index";
-import { AccountInfo, DeviceState, RoomEvent, RoomEventType, RoomInfo, TrackDesc, WeChat_VCSIns } from "../../sdk/index";
+import { AccountInfo, DeviceState, RoomEventType, RoomInfo, SdkError, TrackDesc, WeChat_VCSIns } from "../../sdk/index";
 
 let vcsIns: WeChat_VCSIns = (getApp() as IAppOption).vcsIns!;
 const MAX_GRIDS = 4;
@@ -16,6 +16,10 @@ Page({
         title: '',
         /**我自己的id */
         meID: '',
+        /**是否开启喇叭 */
+        enableSpeaker: true,
+        /**前置还是后置摄像头 */
+        cameraPosition: "front",
         /**是否开启麦克风 */
         enableMic: false,
         /**是否开启视频 */
@@ -102,6 +106,51 @@ Page({
     },
     onTapBack() {
         wx.navigateBack();
+    },
+    onTapSpeakerBtn() {
+        this.setData({
+            enableSpeaker: !this.data.enableSpeaker
+        });
+    },
+    onTapSwitchCameraBtn() {
+        this.setData({
+            cameraPosition: this.data.cameraPosition === 'front' ? 'back' : 'front'
+        });
+        wx.createLivePusherContext().switchCamera();
+    },
+    // 长按格子截图
+    onLpMemberGrid(evt: any) {
+        let grid: number = evt.currentTarget.dataset.id.replace('grid', '');
+        this.snap(grid);
+    },
+    snap(grid:number) {
+        let account = this.data.renderAccounts[grid];
+        if(!account || account.vstate !== DeviceState.DS_Active) {
+            wx.showToast({
+                icon: "none",
+                title: '对应网格没有流，无法截图',
+            });
+            return;
+        }
+        let context:WechatMiniprogram.LivePlayerContext | WechatMiniprogram.LivePusherContext;
+
+        if (account.id == this.data.meID) {
+            context = wx.createLivePusherContext();
+        } else {
+            context = wx.createLivePlayerContext(`player-${account.id}`);
+        }
+        context.snapshot({
+            quality: "raw", 
+            sourceType: "stream",
+            success: (result) => {
+                wx.previewImage({
+                    urls: [result.tempImagePath]
+                });
+            },
+            fail: (result) => {
+                console.log('截图失败', result.errMsg);
+            }
+        });
     },
     /**
      * 延迟回到上一页并且不弹框提醒
@@ -261,7 +310,7 @@ Page({
                     showCancel: true,
                     success: (res) => {
                         if (res.confirm) {
-                            this.setMicState(DeviceState.DS_Active);
+                            this.setMicState(DeviceState.DS_Active, true);
                         }
                     }
                 });
@@ -272,7 +321,7 @@ Page({
                     icon: "none",
                     title: evt.type == RoomEventType.AUDIO_CLOSE ? '主持人已关闭您的麦克风' : '主持人已禁用您的麦克风',
                 });
-                this.setMicState(evt.type == RoomEventType.AUDIO_CLOSE ? DeviceState.DS_Closed : DeviceState.DS_Disabled);
+                this.setMicState(evt.type == RoomEventType.AUDIO_CLOSE ? DeviceState.DS_Closed : DeviceState.DS_Disabled, true);
                 break;
             case RoomEventType.UP_WEAKNET:
                 // 上行带宽不足，建议关闭摄像头
@@ -370,12 +419,18 @@ Page({
     /**
      * 设置麦克风设备状态
      * @param state 
+     * @param byHost 是否是主持人操作
      */
-    setMicState(state: DeviceState) {
+    setMicState(state: DeviceState, byHost = false) {
         // 设置state
-        vcsIns.setMicroEnable(state).then(() => {
+        vcsIns.setMicroEnable(state, byHost).then(() => {
             this.setData({
                 enableMic: state == DeviceState.DS_Active,
+            });
+        }).catch((err:SdkError) => {
+            wx.showToast({
+                icon: "none",
+                title: err.msg,
             });
         });
     },
