@@ -1,7 +1,7 @@
 //  let {WeChat_VCSIns} = require("../../sdk/index.js")
 import createRecycleContext from 'miniprogram-recycle-view';
 import { IAppOption } from "../../../typings/index";
-import { AccountInfo, DeviceState, RoomEventType, RoomInfo, SdkError, TrackDesc, WeChat_VCSIns } from "../../sdk/index";
+import { AccountInfo, DeviceState, RoomEvent, RoomEventType, RoomInfo, SdkError, TrackDesc, WeChat_VCSIns } from "../../sdk/index";
 
 let vcsIns: WeChat_VCSIns = (getApp() as IAppOption).vcsIns!;
 const MAX_GRIDS = 4;
@@ -36,6 +36,8 @@ Page({
         replay: {} as Record<string, boolean>,
         /**是否断线重连中 */
         reconnecting: false,
+        /**是否需要断开所有rtmp pusher/rtmp player */
+        clearAllRtmp: false,
         /**当前显示的成员信息 */
         renderAccounts: [] as AccountInfo[],
         /**房间成员数 */
@@ -118,10 +120,24 @@ Page({
         });
         wx.createLivePusherContext().switchCamera();
     },
-    // 长按格子截图
+    // 长按格子截图/混音流静音
     onLpMemberGrid(evt: any) {
         let grid: number = evt.currentTarget.dataset.id.replace('grid', '');
-        this.snap(grid);
+        // this.snap(grid);
+        this.amixerFilter(grid);
+    },
+    amixerFilter(grid:number) {
+        let account = this.data.renderAccounts[grid];
+        if(!account) {
+            wx.showToast({
+                icon: "none",
+                title: '对应网格用户没开音频，不用从混音流中去掉',
+            });
+            return;
+        }
+        this.setData({
+            amixer: vcsIns.setAMixerFilter(account.id)
+        });
     },
     snap(grid:number) {
         let account = this.data.renderAccounts[grid];
@@ -141,7 +157,7 @@ Page({
         }
         context.snapshot({
             quality: "raw", 
-            sourceType: "stream",
+            // sourceType: "stream",
             success: (result) => {
                 wx.previewImage({
                     urls: [result.tempImagePath]
@@ -186,6 +202,7 @@ Page({
                 this.refreshRender(evt.data);
                 break;
             case RoomEventType.MEETING_CLOSE:
+                this.setData({ clearAllRtmp: true });
                 wx.showModal({
                     content: "会议已结束",
                     showCancel: false,
@@ -195,6 +212,7 @@ Page({
                 });
                 break;
             case RoomEventType.KICKED_OUT:
+                this.setData({ clearAllRtmp: true });
                 wx.showModal({
                     content: "你被踢出房间",
                     showCancel: false,
@@ -204,6 +222,7 @@ Page({
                 });
                 break;
             case RoomEventType.IMPOSED_EXIT:
+                this.setData({ clearAllRtmp: true });
                 wx.showModal({
                     content: `抱歉，发生异常(${evt.data})离会`,
                     showCancel: false,
